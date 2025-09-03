@@ -1,0 +1,22 @@
+h1{
+    background: #1f77b4;
+    color: white;
+    font-size: 300%;
+}
+img{
+    height: 480px;
+}
+.title{
+    font-size: auto;
+    flex: left;
+    margin: auto;
+}
+
+.func{
+    display:flex;
+    width: 33%;
+}
+.spec{
+    display:flex;
+
+}
