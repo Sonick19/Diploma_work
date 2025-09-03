@@ -18,7 +18,7 @@ def clean(data):
 
 
 def clean_outliers(data):
-    if len(data) > 10:
+    if len(data) > 5:
         data = data.dropna()
         # Calculate the 25th percentile.
         qOne = data.quantile(0.25)

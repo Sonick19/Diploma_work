@@ -10,8 +10,8 @@ class TestRun:
 
     def run(self):
         now = datetime.now()
-        path = f'runs/{now.strftime("%d-%m-%Y")}/{now.timestamp()}'
-        os.makedirs(path)
+        path = f'runs/{now.strftime("%d-%m-%Y")}/{now.strftime("%H-%M-%S")}'
+        os.makedirs(path+'/image')
         with open(f'{path}/main.html', 'w') as file:
             file.write((f'<!DOCTYPE html>\n<html>\n<head>\n'
                         f'<link rel="stylesheet" href="mystyle.css">\n</head>\n<body>\n'))
@@ -21,12 +21,12 @@ class TestRun:
                     for func in self.function_list[key]:  # apply all function from specific category to column
                         self._function_implement(file, func, column_name, path)
             file.write(f'</body>\n</html>')
+            last_time = datetime.now()-now
+            print(f'Run time: {last_time.seconds} seconds')
 
     def _function_implement(self, file_name, func, column_name, path):
         file_name.write(f'\n\t<div class="func">')
-        print(func)
-        for key, value in func.items():
-            result = key(self.dataset, column_name, path, **value)
+        result = func(self.dataset, column_name, path,)
         title = result.get('title')
         text = result.get('text')
         image = result.get('image')

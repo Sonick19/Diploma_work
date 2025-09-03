@@ -1,11 +1,11 @@
 from data import Data
 import pandas as pd
 from geopy.geocoders import Nominatim
-from custom_function import continuous_data_vis, continuous_compare_vis
+from custom_function import continuous_data_vis, continuous_compare_vis, kruskal_test
 from html_class import TestRun
 from cleaner import clean
 
-geolocator = Nominatim(user_agent="data2019da")
+# geolocator = Nominatim(user_agent="data2019da")
 
 sample = Data("data/GenomicsOfT1DInUkrai-ALLdeID_DATA_2025-09-02_1901.csv",
               "data/categorical_key_world.txt",
@@ -27,27 +27,19 @@ sample.data = cluster_data.merge(sample.data, left_on='Sample', right_on='sample
 search = {'SuperCluster': [i for i in range(1,6)]}
 category_function = {
     (*sample.categorization['continuous_data']['common'], *sample.categorization['continuous_data']['test']):
-        [{continuous_data_vis: {
-                'clean': False,
-                'search_column': None,
-                'comment': None
-            }
-          },
-         {continuous_compare_vis: {
-                'clean': False,
-                'search_column': search,
-                'comment': None
-            }
-          },
-         {continuous_compare_vis: {
-                'clean': True,
-                'search_column': search,
-                'comment': 'after_clean '
-            }
-          }
-         ]
+        [continuous_data_vis(clean=True, comment="Clean data"),
+         continuous_compare_vis(search_column=search),
+         continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
+         kruskal_test(search),
+         kruskal_test(search, clean=True, comment= "CLEAN")
+         ],
+    (*sample.categorization['numerical_data']['common'], *sample.categorization['numerical_data']['test']):
+[continuous_data_vis(clean=True, comment="Clean data"),
+         continuous_compare_vis(search_column=search),
+         continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
+         kruskal_test(search),
+         kruskal_test(search, clean=True, comment= "CLEAN")
+         ],
 }
 run1 = TestRun("first_one", sample.data, category_function)
-print(run1.function_list)
 run1.run()
-print(category_function)

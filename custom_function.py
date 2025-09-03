@@ -1,28 +1,26 @@
 import matplotlib.pyplot as plt
 from cleaner import clean_outliers
+from scipy import stats
 
-def continuous_data_vis(dataset, column, path='', clean=False, search_column=None, comment=''):
-    plt.figure()
-    dt = dataset[column].dropna()
-    plt.hist(dt, density=False, bins=100)
-    plt.axvline(dt.median(), color="black", ls="--", label="Median")
-    plt.title(column)
-    plt.legend()
-    plt.savefig(f'{path}/contin_vis_{column}{comment}.png')
-    plt.close()
-    return {"image": f'contin_vis_{column}{comment}.png', "title": f'{comment}'}
+def continuous_data_vis(clean=False, comment=''):
+    def inner(dataset, column, path='',):
+        plt.figure()
+        dt = dataset[column].dropna()
+        if clean:
+            dt = clean_outliers(dt)
+        plt.hist(dt, density=False, bins=100)
+        plt.axvline(dt.median(), color="black", ls="--", label="Median")
+        plt.title(column)
+        plt.legend()
+        plt.savefig(f'{path}/image/contin_vis_{column}{comment}.png')
+        plt.close()
+        return {"image": f'image/contin_vis_{column}{comment}.png', "title": f'{comment}'}
+    return inner
 
 
-def continuous_compare_vis(dataset, column, path='', clean=False, search_column=None, comment=''):
-    plt.figure()
-    # if column in ['height_cm', 'weight_kg', 'bmi', 'waist_circumference_cm', 'hip_circumference_cm',]:
-    #     counting_c_w = data[(data['casecontrol'] == 2) & (data['patientsex'] == 1)][column].dropna()
-    #     counting_c_m = data[(data['casecontrol'] == 2) & (data['patientsex'] == 2)][column].dropna()
-    #     counting_t_w = data[(data['casecontrol'] == 1) & (data['patientsex'] == 1)][column].dropna()
-    #     counting_t_m = data[(data['casecontrol'] == 1) & (data['patientsex'] == 2)][column].dropna()
-    #     plt.boxplot([counting_c_w, counting_c_m, counting_t_w, counting_t_m],
-    #                 labels=["control_woman", "control_man", "test_woman", "test_man"])
-    if True:
+def continuous_compare_vis(search_column=None, clean=False, comment=''):
+    def inner(dataset, column, path=''):
+        plt.figure()
         data_list = []
         label_list = []
         for key, elem in search_column.items():
@@ -33,7 +31,29 @@ def continuous_compare_vis(dataset, column, path='', clean=False, search_column=
                 data_list.append(data)
                 label_list.append(f'{key}_{category}\n{len(data)}')
         plt.boxplot(data_list, labels=label_list)
-    plt.title(column)
-    plt.savefig(f'{path}/contin_compare_{column}{comment}.png')
-    plt.close()
-    return {"image": f'contin_compare_{column}{comment}.png', "title": f'{comment}'}
+        plt.xticks(rotation=10)
+        plt.title(column)
+        plt.savefig(f'{path}/image/contin_compare_{column}{comment}.png')
+        plt.close()
+        return {"image": f'image/contin_compare_{column}{comment}.png', "title": f'{comment}'}
+    return inner
+
+def kruskal_test(search_column=None, clean=False, comment=''):
+    def inner(dataset, column, path=''):
+        data_list = []
+        for key, elem in search_column.items():
+            for category in elem:
+                data = dataset[dataset[key] == category][column].dropna()
+                if clean:
+                    data = clean_outliers(data)
+                data_list.append(data)
+        result = stats.kruskal(*data_list)
+        value = result[1]
+        if value < 0.05:
+            return {"title": f'Kruskal-Wallis H-test {comment} - Significant',
+                     "text": f'p-value = {value}'}
+        else:
+            return {"title": f'Kruskal-Wallis H-test {comment} - NONsignificant',
+                    "text": f'p-value = {value}'}
+    return inner
+
