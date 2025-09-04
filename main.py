@@ -25,6 +25,7 @@ sample.data = cluster_data.merge(sample.data, left_on='Sample', right_on='sample
 
 # print(sample.data[sample.data['ica_u_ml'].isin(['1:10', '10-Jan', '1:32', '28-05-2025 ', ' -', '>280'])][['sample_code', 'ica_u_ml']])
 search = {'SuperCluster': [i for i in range(1,6)]}
+# search = {'SuperCluster': [1, 2, 3, 5]}
 category_function = {
     (*sample.categorization['continuous_data']['common'], *sample.categorization['continuous_data']['test']):
         [continuous_data_vis(clean=True, comment="Clean data"),
