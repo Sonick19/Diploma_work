@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 from cleaner import clean_outliers
 from scipy import stats
+import scikit_posthocs as sp
+
 
 def continuous_data_vis(clean=False, comment=''):
     def inner(dataset, column, path='',):
@@ -38,6 +40,7 @@ def continuous_compare_vis(search_column=None, clean=False, comment=''):
         return {"image": f'image/contin_compare_{column}{comment}.png', "title": f'{comment}'}
     return inner
 
+
 def kruskal_test(search_column=None, clean=False, comment=''):
     def inner(dataset, column, path=''):
         data_list = []
@@ -51,19 +54,24 @@ def kruskal_test(search_column=None, clean=False, comment=''):
                 label_list.append(f'{key}_{category}')
         result = stats.kruskal(*data_list)
         value = result[1]
+        try:
+            res = sp.posthoc_dunn(data_list, p_adjust="holm")
+            # Apply styling
+            res = res.style.map(__highlight_significant).to_html()
+        except:
+            res = ''
+
         if value < 0.05:
-            tip = '<br>'
-            for i in range(len(data_list)):
-                tip += f'{label_list[i]}: '
-                for j in range(len(data_list)):
-                    result_mann = stats.mannwhitneyu(data_list[i], data_list[j])
-                    if result_mann[1] < 0.05:
-                        tip += f'{label_list[j]}, '
-                tip += f'<br>'
-            return {"title": f'Kruskal-Wallis H-test {comment} - Significant',
-                     "text": f'p-value = {value}\n {tip}'}
+            return {"title": f'Kruskal-Wallis H-test {comment} - <span style="color:red;">Significant</span>',
+                    "text": f'p-value = {value}\n{res}'}
         else:
             return {"title": f'Kruskal-Wallis H-test {comment} - NONsignificant',
                     "text": f'p-value = {value}'}
     return inner
+
+
+def __highlight_significant(val):
+    color = 'red' if val < 0.05 else 'black'
+    return f'color: {color}'
+
 
