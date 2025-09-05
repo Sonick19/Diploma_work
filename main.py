@@ -1,7 +1,8 @@
 from data import Data
 import pandas as pd
 from geopy.geocoders import Nominatim
-from custom_function import continuous_data_vis, continuous_compare_vis, kruskal_test
+from custom_function import (continuous_data_vis, continuous_compare_vis, kruskal_test,
+                             categorical_compare_tc_vis, chi_test)
 from html_class import TestRun
 from cleaner import clean
 
@@ -29,18 +30,23 @@ search = {'SuperCluster': [i for i in range(1,6)]}
 category_function = {
     (*sample.categorization['continuous_data']['common'], *sample.categorization['continuous_data']['test']):
         [continuous_data_vis(clean=True, comment="Clean data"),
-         continuous_compare_vis(search_column=search),
          continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
-         kruskal_test(search),
-         kruskal_test(search, clean=True, comment= "CLEAN")
+         kruskal_test(search, clean=True)
          ],
     (*sample.categorization['numerical_data']['common'], *sample.categorization['numerical_data']['test']):
-[continuous_data_vis(clean=True, comment="Clean data"),
-         continuous_compare_vis(search_column=search),
+        [continuous_data_vis(clean=True, comment="Clean data"),
          continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
-         kruskal_test(search),
-         kruskal_test(search, clean=True, comment= "CLEAN")
+         kruskal_test(search, clean=True)
          ],
 }
-run1 = TestRun("first_one", sample.data, category_function)
-run1.run()
+run1 = TestRun("first_one", sample, category_function)
+run1.run(only_valuable=True, func=kruskal_test(search, clean=True))
+category_function = {
+    (*sample.categorization['categorical_data']['common'], *sample.categorization['categorical_data']['test']):
+        [categorical_compare_tc_vis(search_column=search),
+         chi_test(search_column=search)
+
+         ],
+                    }
+run2 = TestRun("second_one", sample, category_function)
+run2.run(only_valuable=True, func=chi_test(search))

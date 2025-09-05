@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 from cleaner import clean_outliers
 from scipy import stats
 import scikit_posthocs as sp
+import pandas as pd
+import numpy as np
 
 
 def continuous_data_vis(clean=False, comment=''):
     def inner(dataset, column, path='',):
         plt.figure()
-        dt = dataset[column].dropna()
+        dt = dataset.data[column].dropna()
         if clean:
             dt = clean_outliers(dt)
         plt.hist(dt, density=False, bins=100)
@@ -23,15 +25,9 @@ def continuous_data_vis(clean=False, comment=''):
 def continuous_compare_vis(search_column=None, clean=False, comment=''):
     def inner(dataset, column, path=''):
         plt.figure()
-        data_list = []
-        label_list = []
-        for key, elem in search_column.items():
-            for category in elem:
-                data = dataset[dataset[key] == category][column].dropna()
-                if clean:
-                    data = clean_outliers(data)
-                data_list.append(data)
-                label_list.append(f'{key}_{category}\n{len(data)}')
+        data_list, label_list = __split_by_group(dataset.data, column, search_column, clean)
+        for i in range(len(label_list)):
+            label_list[i] = label_list[i] + f'\n{len(data_list[i])}'
         plt.boxplot(data_list, labels=label_list)
         plt.xticks(rotation=10)
         plt.title(column)
@@ -42,30 +38,54 @@ def continuous_compare_vis(search_column=None, clean=False, comment=''):
 
 
 def kruskal_test(search_column=None, clean=False, comment=''):
-    def inner(dataset, column, path=''):
-        data_list = []
-        label_list = []
-        for key, elem in search_column.items():
-            for category in elem:
-                data = dataset[dataset[key] == category][column].dropna()
-                if clean:
-                    data = clean_outliers(data)
-                data_list.append(data.values)
-                label_list.append(f'{key}_{category}')
+    def inner(dataset, column, path='', check=False):
+        data_list, label_list = __split_by_group(dataset.data, column, search_column, clean)
         result = stats.kruskal(*data_list)
         value = result[1]
-        try:
-            res = sp.posthoc_dunn(data_list, p_adjust="holm")
-            # Apply styling
-            res = res.style.map(__highlight_significant).to_html()
-        except:
-            res = ''
-
         if value < 0.05:
+            if check:
+                return True
+            try:
+                res = sp.posthoc_dunn(data_list, p_adjust="holm")
+                # Apply styling
+                res = res.style.map(__highlight_significant).to_html()
+            except:
+                res = ''
             return {"title": f'Kruskal-Wallis H-test {comment} - <span style="color:red;">Significant</span>',
                     "text": f'p-value = {value}\n{res}'}
         else:
+            if check:
+                return False
             return {"title": f'Kruskal-Wallis H-test {comment} - NONsignificant',
+                    "text": f'p-value = {value}'}
+    return inner
+
+
+def categorical_compare_tc_vis(search_column=None,  comment=''):
+    def inner(dataset, column, path=''):
+        # specify possible categories in column
+        index = dataset.data[column].value_counts().index
+        data_list, label_list = __split_by_group(dataset.data, column, search_column, method=pd.Series.value_counts)
+        translation = column in dataset.keyword
+        result = viz(column, data_list, label_list, index, translation, dataset.keyword.get(column),
+                     path, comment)
+        return result
+    return inner
+
+
+def chi_test(search_column=None, comment=''):
+    def inner(dataset, column, path='', check=False):
+        reshape = pd.crosstab(dataset.data[column], dataset.data[str(*search_column.keys())])
+        value = stats.chi2_contingency(reshape).pvalue
+        if value < 0.05:
+            if check:
+                return True
+            return {"title": f'Chi2-test {comment} - <span style="color:red;">Significant</span>',
+                    "text": f'p-value = {value}'}
+        else:
+            if check:
+                return False
+            return {"title": f'Chi2-test {comment} - NONsignificant',
                     "text": f'p-value = {value}'}
     return inner
 
@@ -75,3 +95,38 @@ def __highlight_significant(val):
     return f'color: {color}'
 
 
+def __split_by_group(dataset, column, search_column, clean=False, method=None):
+    data_list = []
+    label_list = []
+    for key, elem in search_column.items():
+        for category in elem:
+            data = dataset[dataset[key] == category][column].dropna()
+            if clean:
+                data = clean_outliers(data)
+            if method:
+                data = method(data)
+            data_list.append(data)
+            label_list.append(f'{key}_{category}')
+    return data_list, label_list
+
+
+def viz(column, data, label, index, translation=False, key_word=None, path='', comment=''):
+    plt.figure(figsize=(12.8, 9.6))
+    bottom = np.zeros(len(data))
+    div = [i.sum() if i.sum() != 0 else 1 for i in data]
+    for elem in index:
+        label_info = [i.get(elem, default=0) for i in data]
+        value = [round(label_info[i]/div[i], 3) for i in range(len(label_info))]
+        if translation:
+            elem = key_word[str(int(elem))]
+        p = plt.bar(label, value,
+                    label=f'{elem} {[f"{label[i][-1]}:{label_info[i]}" for i in range(len(label_info))]}',
+                    bottom=bottom)
+        bottom += value
+        plt.bar_label(p, label_type='center')
+    plt.title(column)
+    plt.legend()
+    path = f'{path}/image/categorical_compare_{column}{comment}.png'
+    plt.savefig(path)
+    plt.close()
+    return {"image": f'image/categorical_compare_{column}{comment}.png', "title": f'{comment}'}

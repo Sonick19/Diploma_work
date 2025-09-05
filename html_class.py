@@ -8,7 +8,7 @@ class TestRun:
         self.dataset = dataset
         self.function_list = function
 
-    def run(self):
+    def run(self, only_valuable=False, func=None):
         now = datetime.now()
         path = f'runs/{now.strftime("%d-%m-%Y")}/{now.strftime("%H-%M-%S")}'
         os.makedirs(path+'/image')
@@ -17,7 +17,14 @@ class TestRun:
                         f'<link rel="stylesheet" href="mystyle.css">\n</head>\n<body>\n'))
             for key in self.function_list:  # chose data category from dictionary
                 for column_name in key:  # chose column from specific data category
-                    file.write(f'<div class="column">\n\t<h1>{column_name.title()}</h1>')
+                    if only_valuable: # filter column if it needed
+                        result = func(self.dataset, column_name, check=True)
+                        if result:
+                            file.write(f'<div class="column">\n\t<h1>{column_name.title()}</h1>')
+                        else:
+                            continue
+                    else:
+                        file.write(f'<div class="column">\n\t<h1>{column_name.title()}</h1>')
                     for func in self.function_list[key]:  # apply all function from specific category to column
                         self._function_implement(file, func, column_name, path)
             file.write(f'</body>\n</html>')
