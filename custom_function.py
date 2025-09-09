@@ -89,29 +89,79 @@ def chi_test(search_column=None, comment=''):
                     "text": f'p-value = {value}'}
     return inner
 
+def categorical_multicolumn_test(search_column=None, comment='', mod = False):
+    def inner(dataset, column, path=''):
+        data_list, label_list = gen_multicolumn_lists(dataset, column, search_column)
+        if not mod:
+            data_list = [data_list[i][data_list[i] >= 5] for i in range(len(data_list))]
+            # generate list of possible index
+            index = [data_list[i].index.to_list() for i in range(len(data_list))]
+            index = [elem for i in index for elem in i]
+            index = list(set(index))
+            # generate graph
+            result = viz(column, data_list, label_list, index,
+                         path=path, size=(25.6, 19.2))
+            return result
+    return inner
+
+
+def categorical_multicolumn_chi_test(search_column=None, comment='', mod=False):
+    def inner(dataset, column, path=''):
+        result = ''
+        data_list, label_list = gen_multicolumn_lists(dataset, column, search_column)
+        if not mod:
+            # frame = {label_list[i]: data_list[i][data_list[i] >= 5] for i in range(len(data_list))}
+            frame = {label_list[i]: data_list[i] for i in range(len(data_list))}
+            data = pd.DataFrame(frame)
+            data = data.fillna(0)
+            for elem in data.index.to_list():
+                save = False
+                d = {}
+                for i in label_list:
+                    row_value = []
+                    for g in label_list:
+                        sample = data.loc[[elem, np.nan], [i, g]]
+                        res = stats.fisher_exact(sample).pvalue
+                        row_value.append(res)
+                        if res < 0.05:
+                            save = True
+                    d[i] = row_value
+                if not save:
+                    continue
+                res_data = pd.DataFrame(d, index=label_list)
+                res = res_data.style.map(__highlight_significant).to_html()
+                result += f'<h3>{elem}</h3>\n {res}\n'
+        return {"title": f'Fisher-test {comment}',
+                    "text": f'{result}'}
+
+    return inner
+
 
 def __highlight_significant(val):
     color = 'red' if val < 0.05 else 'black'
     return f'color: {color}'
 
 
-def __split_by_group(dataset, column, search_column, clean=False, method=None):
+def __split_by_group(dataset, column, search_column, clean=False, method=None, method_arg=None, drop=True):
     data_list = []
     label_list = []
     for key, elem in search_column.items():
         for category in elem:
-            data = dataset[dataset[key] == category][column].dropna()
+            if drop:
+                data = dataset[dataset[key] == category][column].dropna()
+            else:
+                data = dataset[dataset[key] == category][column]
             if clean:
                 data = clean_outliers(data)
             if method:
-                data = method(data)
+                data = method(data, **method_arg)
             data_list.append(data)
             label_list.append(f'{key}_{category}')
     return data_list, label_list
 
 
-def viz(column, data, label, index, translation=False, key_word=None, path='', comment=''):
-    plt.figure(figsize=(12.8, 9.6))
+def viz(column, data, label, index, translation=False, key_word=None, path='', comment='', size=(12.8, 9.6)):
+    plt.figure(figsize=size)
     bottom = np.zeros(len(data))
     div = [i.sum() if i.sum() != 0 else 1 for i in data]
     for elem in index:
@@ -123,10 +173,24 @@ def viz(column, data, label, index, translation=False, key_word=None, path='', c
                     label=f'{elem} {[f"{label[i][-1]}:{label_info[i]}" for i in range(len(label_info))]}',
                     bottom=bottom)
         bottom += value
-        plt.bar_label(p, label_type='center')
+        plt.bar_label(p, fmt=lambda x: round(x, 3) if x != 0 else '', label_type='center')
     plt.title(column)
     plt.legend()
     path = f'{path}/image/categorical_compare_{column}{comment}.png'
     plt.savefig(path)
     plt.close()
     return {"image": f'image/categorical_compare_{column}{comment}.png', "title": f'{comment}'}
+
+
+def gen_multicolumn_lists(dataset, columns, search_column):
+    # generate empty data and label lists
+    data_list = [pd.Series() for elem in search_column.values() for i in elem]
+    label_list = ['' for i in range(len(data_list))]
+    # fill prev lists with series object, divided by searching interests
+    for elem in columns:
+        data_list_new, label_list_new = __split_by_group(dataset.data, elem, search_column,
+                                                         method=pd.Series.value_counts,
+                                                         method_arg={'dropna': False}, drop=False)
+        data_list = [data_list[i].add(data_list_new[i], fill_value=0) for i in range(len(data_list))]
+        label_list = label_list_new
+    return data_list, label_list

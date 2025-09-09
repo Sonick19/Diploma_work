@@ -20,11 +20,11 @@ class TestRun:
                     if only_valuable: # filter column if it needed
                         result = func(self.dataset, column_name, check=True)
                         if result:
-                            file.write(f'<div class="column">\n\t<h1>{column_name.title()}</h1>')
+                            file.write(f'<div class="column">\n\t<h1>{column_name}</h1>')
                         else:
                             continue
                     else:
-                        file.write(f'<div class="column">\n\t<h1>{column_name.title()}</h1>')
+                        file.write(f'<div class="column">\n\t<h1>{column_name}</h1>')
                     for func in self.function_list[key]:  # apply all function from specific category to column
                         self._function_implement(file, func, column_name, path)
             file.write(f'</body>\n</html>')
