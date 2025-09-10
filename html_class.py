@@ -10,7 +10,7 @@ class TestRun:
 
     def run(self, only_valuable=False, func=None):
         now = datetime.now()
-        path = f'runs/{now.strftime("%d-%m-%Y")}/{now.strftime("%H-%M-%S")}'
+        path = f'runs/{now.strftime("%d-%m-%Y")}/{now.strftime("%H-%M-%S")}{self.name}'
         os.makedirs(path+'/image')
         with open(f'{path}/main.html', 'w') as file:
             file.write((f'<!DOCTYPE html>\n<html>\n<head>\n'

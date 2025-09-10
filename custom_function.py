@@ -4,6 +4,7 @@ from scipy import stats
 import scikit_posthocs as sp
 import pandas as pd
 import numpy as np
+import simple_icd_10 as icd
 
 
 def continuous_data_vis(clean=False, comment=''):
@@ -65,7 +66,7 @@ def categorical_compare_tc_vis(search_column=None,  comment=''):
     def inner(dataset, column, path=''):
         # specify possible categories in column
         index = dataset.data[column].value_counts().index
-        data_list, label_list = __split_by_group(dataset.data, column, search_column, method=pd.Series.value_counts)
+        data_list, label_list = __split_by_group(dataset.data, column, search_column, method=pd.Series.value_counts, method_arg={})
         translation = column in dataset.keyword
         result = viz(column, data_list, label_list, index, translation, dataset.keyword.get(column),
                      path, comment)
@@ -92,45 +93,61 @@ def chi_test(search_column=None, comment=''):
 def categorical_multicolumn_test(search_column=None, comment='', mod = False):
     def inner(dataset, column, path=''):
         data_list, label_list = gen_multicolumn_lists(dataset, column, search_column)
-        if not mod:
-            data_list = [data_list[i][data_list[i] >= 5] for i in range(len(data_list))]
-            # generate list of possible index
-            index = [data_list[i].index.to_list() for i in range(len(data_list))]
-            index = [elem for i in index for elem in i]
-            index = list(set(index))
-            # generate graph
-            result = viz(column, data_list, label_list, index,
-                         path=path, size=(25.6, 19.2))
-            return result
+        if mod:
+            data_list = [icd_splitter(i) for i in data_list]
+        # generate list of possible index
+        index = [i.index.to_list() for i in data_list]
+        index = [elem for i in index for elem in i]
+        res_index = []
+        # remove minor index and duplicates
+        for elem in index:
+            if elem not in res_index:
+                counter = 0
+                for record in data_list:
+                    counter += record.get(elem, 0)
+                if counter > len(data_list)*3:
+                    res_index.append(elem)
+        res_index.remove(np.nan)
+        res_index.insert(0, np.nan)
+        # generate graph
+        result = viz(column, data_list, label_list, res_index,
+                     path=path)
+        return result
     return inner
 
 
-def categorical_multicolumn_chi_test(search_column=None, comment='', mod=False):
+def categorical_multicolumn_chi_test(search_column=None, comment='', mod=False, hide=False):
     def inner(dataset, column, path=''):
         result = ''
         data_list, label_list = gen_multicolumn_lists(dataset, column, search_column)
-        if not mod:
-            # frame = {label_list[i]: data_list[i][data_list[i] >= 5] for i in range(len(data_list))}
-            frame = {label_list[i]: data_list[i] for i in range(len(data_list))}
-            data = pd.DataFrame(frame)
-            data = data.fillna(0)
-            for elem in data.index.to_list():
+        if mod:
+            data_list = [icd_splitter(i) for i in data_list]
+
+        frame = {label_list[i]: data_list[i] for i in range(len(data_list))}
+        data = pd.DataFrame(frame)
+        data = data.fillna(0)
+        for elem in data.index.to_list():
+            if hide:
                 save = False
-                d = {}
-                for i in label_list:
-                    row_value = []
-                    for g in label_list:
-                        sample = data.loc[[elem, np.nan], [i, g]]
-                        res = stats.fisher_exact(sample).pvalue
-                        row_value.append(res)
+            else:
+                save = True
+            d = {}
+            for i in label_list:
+                row_value = []
+                for g in label_list:
+                    sample = data.loc[[elem, np.nan], [i, g]]
+                    res = stats.fisher_exact(sample).pvalue
+                    row_value.append(res)
+                    if hide:
                         if res < 0.05:
                             save = True
-                    d[i] = row_value
-                if not save:
-                    continue
-                res_data = pd.DataFrame(d, index=label_list)
-                res = res_data.style.map(__highlight_significant).to_html()
-                result += f'<h3>{elem}</h3>\n {res}\n'
+                d[i] = row_value
+            if not save:
+                continue
+            res_data = pd.DataFrame(d, index=label_list)
+            res = res_data.style.map(__highlight_significant).to_html()
+            result += f'<h3>{elem}</h3>\n {res}\n'
+
         return {"title": f'Fisher-test {comment}',
                     "text": f'{result}'}
 
@@ -194,3 +211,17 @@ def gen_multicolumn_lists(dataset, columns, search_column):
         data_list = [data_list[i].add(data_list_new[i], fill_value=0) for i in range(len(data_list))]
         label_list = label_list_new
     return data_list, label_list
+
+
+def icd_splitter(series):
+    res = pd.Series()
+    for key, value in series.items():
+        if isinstance(key, str):
+            new_key = key.split('.')[0] + "    " + icd.get_description(key.split('.')[0])
+        else:
+            new_key = key
+        if new_key not in res:
+            res[new_key] = value
+        else:
+            res[new_key] += value
+    return res

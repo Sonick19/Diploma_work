@@ -28,35 +28,55 @@ sample.data = cluster_data.merge(sample.data, left_on='Sample', right_on='sample
 # print(sample.data[sample.data['ica_u_ml'].isin(['1:10', '10-Jan', '1:32', '28-05-2025 ', ' -', '>280'])][['sample_code', 'ica_u_ml']])
 search = {'SuperCluster': [i for i in range(1,6)]}
 # search = {'SuperCluster': [1, 2, 3, 5]}
-category_function = {
-    (*sample.categorization['continuous_data']['common'], *sample.categorization['continuous_data']['test']):
-        [continuous_data_vis(clean=True, comment="Clean data"),
-         continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
-         kruskal_test(search, clean=True)
-         ],
-    (*sample.categorization['numerical_data']['common'], *sample.categorization['numerical_data']['test']):
-        [continuous_data_vis(clean=True, comment="Clean data"),
-         continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
-         kruskal_test(search, clean=True)
-         ],
-}
-# run1 = TestRun("first_one", sample, category_function)
+# category_function = {
+#     (*sample.categorization['continuous_data']['common'], *sample.categorization['continuous_data']['test']):
+#         [continuous_data_vis(clean=True, comment="Clean data"),
+#          continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
+#          kruskal_test(search, clean=True)
+#          ],
+#     (*sample.categorization['numerical_data']['common'], *sample.categorization['numerical_data']['test']):
+#         [continuous_data_vis(clean=True, comment="Clean data"),
+#          continuous_compare_vis(clean=True, search_column=search, comment="Clean data"),
+#          kruskal_test(search, clean=True)
+#          ],
+# }
+# run1 = TestRun("numerical_data", sample, category_function)
 # run1.run(only_valuable=True, func=kruskal_test(search, clean=True))
 # category_function = {
-#     (*sample.categorization['checkbox_data']['ethnic_group'],):
+#     (*sample.categorization['categorical_data']['common'], *sample.categorization['categorical_data']['test']):
 #         [categorical_compare_tc_vis(search_column=search),
 #          chi_test(search_column=search)
 #
 #          ],
 #                    }
-# run2 = TestRun("second_one", sample, category_function)
-# run2.run()
+# run2 = TestRun("categorical_data_clean", sample, category_function)
 # run2.run(only_valuable=True, func=chi_test(search))
-category_function = {
-    (tuple(*sample.categorization['diseases_data']['test']),):
-        [categorical_multicolumn_test(search_column=search),
-         categorical_multicolumn_chi_test(search_column=search)]
-}
+#
+# category_function = {
+#     (tuple(*sample.categorization['diseases_data']['test']),):
+#         [categorical_multicolumn_test(search_column=search, mod=True),
+#          categorical_multicolumn_chi_test(search_column=search, mod=True, hide=True),
+#          categorical_multicolumn_test(search_column=search, ),
+#          categorical_multicolumn_chi_test(search_column=search, hide=True)
+#          ]
+# }
+#
+# run3 = TestRun("t1_complication", sample, category_function )
+# run3.run()
 
-run3 = TestRun("complication", sample, category_function )
-run3.run()
+category_function = {
+    (*sample.categorization['checkbox_data']['sub_ethnos'],
+     *sample.categorization['checkbox_data']['ethnic_group'],
+     *sample.categorization['checkbox_data']['mother_twins_4'],
+     *sample.categorization['checkbox_data']['family_t1d_who'],
+     *sample.categorization['checkbox_data']['chronic_autoimmune_diseases'],
+     *sample.categorization['checkbox_data']['family_ai_specify'],
+
+     ):
+        [categorical_compare_tc_vis(search_column=search),
+         chi_test(search_column=search)
+
+         ],
+                   }
+run4 = TestRun("checkbox_data_clean", sample, category_function)
+run4.run(only_valuable=True, func=chi_test(search))
