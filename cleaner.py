@@ -14,6 +14,7 @@ def clean(data):
     data.loc[(data['gfr_ckd_epi'] > 500), ['gfr_ckd_epi']] = np.nan
     # 'c_peptide_levels_ng_ml'
     data.loc[(data['c_peptide_levels_ng_ml'] > 20), ['c_peptide_levels_ng_ml']] = np.nan
+    data['diabet_onset'] = data['ageyears'] - data['duration_of_disease']
     return data
 
 

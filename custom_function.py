@@ -73,6 +73,18 @@ def categorical_compare_tc_vis(search_column=None,  comment=''):
         return result
     return inner
 
+def pure_categorical(search_column=None,  comment=''):
+    def inner(dataset, column, path=''):
+        # specify possible categories in column
+        data_list = dataset.data[column] .value_counts()
+        index = data_list.index
+        label_list = [column,]
+        translation = column in dataset.keyword
+        result = viz(column, [data_list,], label_list, index, translation, dataset.keyword.get(column),
+                     path, comment)
+        return result
+    return inner
+
 
 def chi_test(search_column=None, comment=''):
     def inner(dataset, column, path='', check=False):
